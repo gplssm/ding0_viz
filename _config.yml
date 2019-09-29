@@ -1,0 +1,1 @@
+exclude: [utils, python_requirements.txt, README, DEPLOY]

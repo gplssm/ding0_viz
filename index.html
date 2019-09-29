@@ -47,8 +47,8 @@
     }).addTo(map);
 
     // use mv grid district bounds to reset background map
-    polygon = "https://gist.githubusercontent.com/gplssm/dad1e6b0de6aface4a50e1075451eead/raw/c3638b6387451ada46b1f643016cbafe60b1c706/mv_grid_district_948.geojson"
-    // polygon = "data/mv_grid_district_2659.geojson"
+    // polygon = "https://gist.githubusercontent.com/gplssm/dad1e6b0de6aface4a50e1075451eead/raw/c3638b6387451ada46b1f643016cbafe60b1c706/mv_grid_district_948.geojson"
+    polygon = "data/mv_grid_district_2659.geojson"
     d3.json(polygon, function(geoShape) {
 
       var b = d3.geoBounds(geoShape);
@@ -58,7 +58,7 @@
       // L.rectangle(bounds, {color: "#ff7800", weight: 1}).addTo(map);
       map.fitBounds(bounds);
 
-      
+
     });
 
   </script>

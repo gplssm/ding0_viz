@@ -63,7 +63,14 @@ def generate_ding0_data(subst_id):
 def create_project_folder(folderpath):
 
 	os.makedirs(folderpath, exist_ok=True)
-	os.makedirs(os.path.join(folderpath, 'data'), exist_ok=True)
+	# os.makedirs(os.path.join(folderpath, 'data'), exist_ok=True)
+
+
+def create_data_folder(folder='data'):
+
+	if os.path.exists(folder):
+	    shutil.rmtree(folder)
+	os.makedirs(folder)
 
 
 if __name__ == '__main__':
@@ -71,10 +78,11 @@ if __name__ == '__main__':
 	# setup
 	mv_grid_district = 2659
 	project_folder = os.path.join(os.path.expanduser('~'), 'projects', 'ding0_visualization_v1')
-	data_folder = os.path.join(project_folder, 'data')
+	data_folder = 'data'
 
-	# create project folder
+	# create project and data folder
 	create_project_folder(project_folder)
+	create_data_folder()
 
 	# retrieve mv grid district polygon
 	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
