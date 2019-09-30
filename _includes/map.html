@@ -6,6 +6,12 @@
   .mt-0 {
   margin-top: 10 !important;
   }
+
+  path {
+      fill: #008d7f;
+      fill-opacity: 1;
+    }
+    
 </style>
 
 
@@ -22,9 +28,7 @@
   var map = L.map('map');
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      // maxZoom: 11,
-      minZoom: 10
+      subdomains: 'abcd'
   }).addTo(map);
 
   // use mv grid district bounds to reset background map
@@ -39,5 +43,73 @@
     map.fitBounds(bounds);
 
 
+
   });
+
+  function plot_nodes(node_data) {
+
+    // Add an SVG element to Leaflet’s overlay pane
+    var svg = d3.select(map.getPanes().overlayPane).append("svg"),
+      g = svg.append("g").attr("class", "leaflet-zoom-hide");
+
+    var transform = d3.geoTransform({point: projectPoint}),
+    path = d3.geoPath().projection(transform);
+
+    map.on('moveend', mapmove);
+
+    redrawSubset(node_data.features)
+
+    function redrawSubset(subset) {
+      path.pointRadius(10); // * scale);
+
+      var bounds = path.bounds({
+        type: "FeatureCollection",
+        features: subset
+      });
+
+      var offset = 10;
+      var topLeft = bounds[0] + offset;
+      var bottomRight = [bounds[1][0] + offset, bounds[1][1] + offset];
+
+
+      svg.attr("width", bottomRight[0] - topLeft[0])
+        .attr("height", bottomRight[1] - topLeft[1])
+        .style("left", topLeft[0] + "px")
+        .style("top", topLeft[1] + "px");
+
+
+      g.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
+
+      var start = new Date();
+
+      var points = g.selectAll("path")
+        .data(subset, function(d) {
+          return d.geometry.coordinates;
+        });
+      points.enter().append("path");
+
+      points.attr("d", path).attr("class", "points");
+
+      points.style("fill-opacity", function(d) {
+        if (d.group) {
+          return (d.group * 0.1) + 0.2;
+        }
+      });
+
+    }
+    mapmove();
+
+      function mapmove(e) {
+        //remove all points
+        d3.selectAll(".points").remove();
+        redrawSubset(node_data.features);
+      }
+  }
+
+d3.json("data/ding0/{{ site.mv_grid_district_id }}/mv_visualization_data_{{ site.mv_grid_district_id }}.geojson", plot_nodes)
+
+function projectPoint(x, y) {
+      var point = map.latLngToLayerPoint(new L.LatLng(y, x));
+      this.stream.point(point.x, point.y);
+    }
 </script>

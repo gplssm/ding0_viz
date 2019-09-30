@@ -2,7 +2,7 @@ import os
 import requests
 import pandas as pd
 import json
-from geojson import Feature, MultiPolygon, FeatureCollection
+from geojson import Feature, MultiPolygon, FeatureCollection, Point
 from shapely.wkb import loads
 from shapely.ops import transform
 import pyproj
@@ -35,16 +35,35 @@ def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
 
 	data['coordinates'] = [tuple(list(transform(projection, g).exterior.coords) for g in geom.geoms)]
 
-	# Convert to geojson
-	coordinates = MultiPolygon(data['coordinates'])
-
-	properties = {key: value for key, value in data.items() 
-		if key not in ['geom', 'coordinates', 'geom_type']}
-	feature_coordinates = Feature(geometry=coordinates, properties=properties)
-
-	feature_collection = FeatureCollection([feature_coordinates])
+	feature_collection = to_geojson([data], geom_type='MultiPolygon')
 
 	return feature_collection
+
+
+def to_geojson(data, geom_type):
+	"""Convert JSON to GeoJSON"""
+
+	collection = []
+
+	for dat in data:
+		if geom_type == 'MultiPolygon':
+			coordinates = MultiPolygon(dat['coordinates'])
+		elif geom_type == 'Point':
+			coordinates = Point(dat['coordinates'])
+		else:
+			raise NotImplementedError()
+
+
+		properties = {key: value for key, value in dat.items() 
+			if key not in ['geom', 'coordinates', 'geom_type']}
+		feature_coordinates = Feature(geometry=coordinates, properties=properties)
+
+		collection.append(feature_coordinates)
+
+	feature_collection = FeatureCollection(collection)
+
+	return feature_collection
+
 
 
 def generate_ding0_data(subst_id):
@@ -73,6 +92,30 @@ def create_data_folder(folder='data'):
 	os.makedirs(folder)
 
 
+def geom_to_coords(geom):
+
+	coordinates_shp = loads(geom, hex=True)
+	coordinates = [coordinates_shp.x, coordinates_shp.y]
+
+	return coordinates
+
+
+def reformat_ding0_grid_data(file):
+
+	data = pd.read_csv(file)
+
+	geo_referenced_data = data.loc[~data['geom'].isna(), 'geom']
+	geo_referenced_data = pd.DataFrame(geo_referenced_data.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_data.index)
+	geo_referenced_data['lat'] = geo_referenced_data['coordinates'].apply(lambda x: x[0])
+	geo_referenced_data['lon'] = geo_referenced_data['coordinates'].apply(lambda x: x[1])
+	
+	data = data.join(geo_referenced_data, how='inner')
+
+	data = data.fillna('NaN').to_dict(orient='records')
+
+	return data
+
+
 if __name__ == '__main__':
 
 	# setup
@@ -80,15 +123,24 @@ if __name__ == '__main__':
 	project_folder = os.path.join(os.path.expanduser('~'), 'projects', 'ding0_visualization_v1')
 	data_folder = 'data'
 
-	# create project and data folder
+	# # create project and data folder
 	create_project_folder(project_folder)
 	create_data_folder()
 
-	# retrieve mv grid district polygon
+	# # retrieve mv grid district polygon
 	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
 	with open(os.path.join(data_folder, 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(mv_grid_district_polygon, outfile)
 
-	# generate ding0 data
+	# # generate ding0 data
 	ding0_data = generate_ding0_data(mv_grid_district)
 	ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
+
+	# reformat ding0 data
+	ding0_data_reformated = reformat_ding0_grid_data(
+		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district))
+		)
+	# ding0_data_reformated.to_csv(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)))
+	ding0_data_geojson = to_geojson(ding0_data_reformated, geom_type='Point')
+	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	    json.dump(ding0_data_geojson, outfile)
