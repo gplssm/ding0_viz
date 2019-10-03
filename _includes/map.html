@@ -97,10 +97,18 @@
       .style("pointer-events", "all")
       .on("mouseover", function (d) {
         Info.style("visibility", "visible")
-        .html("<h5>" + d.properties.name + "</h5> <br></br>Nominal voltage: " + d.properties.v_nom + " kV");
+        .html("<h5>" + d.properties.name + "</h5> <p>Nominal voltage: " + d.properties.v_nom + " kV</p>");
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style("fill-opacity", ".7");
       })
       .on('mouseout', function() {                              
           Info.style('visibility', 'hidden');
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .style("fill-opacity", "1")
         });  
 
     points.enter().append("path");
