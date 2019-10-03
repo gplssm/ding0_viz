@@ -25,6 +25,4 @@ function setMapBounds (map, shape) {
 function read_shape(shape) {
   // console.log(shape);
   setMapBounds(map, shape);
-
-  grid_info= shape.features[0].properties;
 }

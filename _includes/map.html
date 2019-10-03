@@ -21,9 +21,6 @@
     <div class="col-sm-3 mx-auto">
       <div class="row" id="district">
         <p style="height: 350px">
-          <h3>
-            Medium-voltage grid district {{ site.mv_grid_district_id }}
-          </h3>
         </p>
       </div>
       <div class="row" id="info">
@@ -37,6 +34,15 @@
 
 <script>
   mv_grid_district_id = "{{ site.mv_grid_district_id }}"
+  var district = d3.select("#district")
+      .append("div")
+      .attr("class", "p")
+      .style("visibility", "visible");
+  d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d) {
+    props = d.features[0].properties;
+      district
+        .html("<h3>Medium-voltage grid district {{ site.mv_grid_district_id }}</h3><p>Area: " + props.area_ha + " ha</p><p>Inhabitants: " + props.zensus_sum + "</p><p>Consumption: " + props.consumption + " MWh/a</p>");
+  });
 
   backgroundmap(mv_grid_district_id);
   // console.log(shape)
