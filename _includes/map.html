@@ -17,9 +17,19 @@
 
 <div class="container-fluid" style="width: 100%">
   <div class="row my-sm-2">
-    <div class="col-sm mx-auto">
-      <div id="map"></div>
+    <div class="col-sm mx-auto" id="map"></div>
+    <div class="col-sm-3 mx-auto">
+      <div class="row" id="district">
+        <p style="height: 350px">
+          <h3>
+            Medium-voltage grid district {{ site.mv_grid_district_id }}
+          </h3>
+        </p>
+      </div>
+      <div class="row" id="info">
+      </div>
     </div>
+
   </div>
 </div>
 
@@ -28,7 +38,8 @@
 <script>
   mv_grid_district_id = "{{ site.mv_grid_district_id }}"
 
-  map = backgroundmap(mv_grid_district_id)
+  backgroundmap(mv_grid_district_id);
+  // console.log(shape)
 
   function plot_nodes(node_data) {
 
@@ -44,7 +55,7 @@
     redrawSubset(node_data.features)
 
     function redrawSubset(subset) {
-      path.pointRadius(10); // * scale);
+      path.pointRadius(10);
 
       var bounds = path.bounds({
         type: "FeatureCollection",
@@ -66,19 +77,29 @@
 
       var start = new Date();
 
-      var points = g.selectAll("path")
-        .data(subset, function(d) {
-          return d.geometry.coordinates;
-        });
-      points.enter().append("path");
+    // Create Infobox
+    var Info = d3.select("#info")
+      .append("div")
+      .attr("class", "p")
+      .style("visibility", "hidden");
 
-      points.attr("d", path).attr("class", "points");
+    // Plot nodes
+    var points = g.selectAll("path")
+      .data(subset, function(d) {
+        return d.geometry.coordinates;
+      })
+      .style("pointer-events", "all")
+      .on("mouseover", function (d) {
+        Info.style("visibility", "visible")
+        .html("<h5>" + d.properties.name + "</h5> <br></br>Nominal voltage: " + d.properties.v_nom + " kV");
+      })
+      .on('mouseout', function() {                              
+          Info.style('visibility', 'hidden');
+        });  
 
-      points.style("fill-opacity", function(d) {
-        if (d.group) {
-          return (d.group * 0.1) + 0.2;
-        }
-      });
+    points.enter().append("path");
+
+    points.attr("d", path).attr("class", "points");
 
     }
     mapmove();
