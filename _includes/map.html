@@ -23,11 +23,12 @@
   </div>
 </div>
 
-  // Create background map with Leaftlet
 <script type="text/javascript" src="js/backgroundmap.js"></script>  
 
-// Plot nodes
 <script>
+  mv_grid_district_id = "{{ site.mv_grid_district_id }}"
+
+  map = backgroundmap(mv_grid_district_id)
 
   function plot_nodes(node_data) {
 
