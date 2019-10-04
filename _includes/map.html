@@ -46,8 +46,8 @@
     // Add an SVG element to Leaflet’s overlay pane
     var svg = d3.select(map.getPanes().overlayPane).append("svg")
     var g = svg.append("g").attr("class", "leaflet-zoom-hide");
-    var map_points = svg.append("g").attr("id", "points");
     var map_lines = svg.append("g").attr("id", "lines");
+    var map_points = svg.append("g").attr("id", "points");
 
     var transform = d3.geoTransform({point: projectPoint}),
     path = d3.geoPath().projection(transform);
