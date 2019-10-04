@@ -14,11 +14,14 @@
   <div class="row my-sm-2">
     <div class="col-sm mx-auto" id="map"></div>
     <div class="col-sm-3 mx-auto">
-      <div class="row" id="district">
-        <p style="height: 350px">
-        </p>
+      <div class="row align-items-top">
+        <div class="col-sm" id="district">
+          <!-- <p style="height: 350px"></p> -->
+        </div>
       </div>
-      <div class="row" id="info">
+      <div class="row mt-5 align-items-top">
+        <div class="col-sm" id="info">
+        </div>
       </div>
     </div>
 
@@ -44,8 +47,30 @@ color = {"hvmv": "#ff8800", "mvlv": "#008db7", "line": "#9c9c9c"}
       .style("visibility", "visible");
   d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d) {
     props = d.features[0].properties;
+    delete props["area_share"];
+    delete props["consumption_per_area"];
+    delete props["dea_cnt"];
+    delete props["free_area"];
+    delete props["gem_clean"];
+    delete props["group"];
+    delete props["la_area"];
+    delete props["la_count"];
+    delete props["lv_dea_cnt"];
+    delete props["population_density"];
+    delete props["subst_sum"];
+    delete props["type1"];
+    delete props["type1_cnt"];
+    delete props["type2"];
+    delete props["type2_cnt"];
+    delete props["type3"];
+    delete props["type3_cnt"];
+    delete props["version"];
+    delete props["zensus_count"];
+    delete props["zensus_density"];
+    delete props["gem"];
+    var grid_description_table = sidebarTable(props);
       district
-        .html("<h3>Medium-voltage grid district {{ site.mv_grid_district_id }}</h3><p>Area: " + props.area_ha + " ha</p><p>Inhabitants: " + props.zensus_sum + "</p><p>Consumption: " + props.consumption + " MWh/a</p>");
+        .html("<h3>Medium-voltage grid district {{ site.mv_grid_district_id }}</h3>" + grid_description_table);
   });
 
   backgroundmap(mv_grid_district_id);
