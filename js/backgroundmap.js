@@ -21,6 +21,8 @@ function setMapBounds (map, shape) {
     // L.rectangle(bounds, {color: "#ff7800", weight: 1}).addTo(map);
     map.fitBounds(bounds);
 }
+  
+L.control.scale().addTo(map);
 
 function read_shape(shape) {
   // console.log(shape);

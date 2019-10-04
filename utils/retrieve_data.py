@@ -2,7 +2,7 @@ import os
 import requests
 import pandas as pd
 import json
-from geojson import Feature, MultiPolygon, FeatureCollection, Point
+from geojson import Feature, MultiPolygon, FeatureCollection, Point, LineString
 from shapely.wkb import loads
 from shapely.ops import transform
 import pyproj
@@ -50,6 +50,8 @@ def to_geojson(data, geom_type):
 			coordinates = MultiPolygon(dat['coordinates'])
 		elif geom_type == 'Point':
 			coordinates = Point(dat['coordinates'])
+		elif geom_type == 'LineString':
+			coordinates = LineString(dat['coordinates'])
 		else:
 			raise NotImplementedError()
 
@@ -100,32 +102,50 @@ def geom_to_coords(geom):
 	return coordinates
 
 
-def reformat_ding0_grid_data(file):
+def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_file):
 
-	data = pd.read_csv(file)
+	buses = pd.read_csv(bus_file)
+	transformers = pd.read_csv(transformer_file)
+	# hvmv_transformers = transformers[transformers['s_nom'] > 1000]
+	# mvlv_transformers = transformers[transformers['s_nom'] <= 1000]
+	lines = pd.read_csv(lines_file)
 
-	geo_referenced_data = data.loc[~data['geom'].isna(), 'geom']
-	geo_referenced_data = pd.DataFrame(geo_referenced_data.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_data.index)
-	geo_referenced_data['lat'] = geo_referenced_data['coordinates'].apply(lambda x: x[0])
-	geo_referenced_data['lon'] = geo_referenced_data['coordinates'].apply(lambda x: x[1])
+	geo_referenced_buses = buses.loc[~buses['geom'].isna(), 'geom']
+	geo_referenced_buses = pd.DataFrame(geo_referenced_buses.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_buses.index)
+	geo_referenced_buses['lat'] = geo_referenced_buses['coordinates'].apply(lambda x: x[0])
+	geo_referenced_buses['lon'] = geo_referenced_buses['coordinates'].apply(lambda x: x[1])
 	
-	data = data.join(geo_referenced_data, how='inner')
+	buses = (buses.join(geo_referenced_buses, how='inner')).set_index('name')
 
-	data = data.fillna('NaN').to_dict(orient='records')
+	transformers_df = transformers.join(buses, on='bus0', how='inner').fillna('NaN')
+	transformers_dict = transformers_df.to_dict(orient='records')
 
-	return data
+	lines_df_0 = lines.join(buses, on='bus0', how='inner').rename(columns={'coordinates': 'coordinates_0'}).set_index('name')
+	lines_df_1 = lines.join(buses, on='bus1', how='inner').rename(columns={'coordinates': 'coordinates_1'}).set_index('name')
+	lines_df = pd.concat([lines_df_0, lines_df_1], axis=1, sort=True).dropna(subset=['coordinates_0', 'coordinates_1'])
+	lines_df['coordinates'] = [[tuple(row['coordinates_0']), tuple(row['coordinates_1'])] for it, row in lines_df.iterrows()]
+	lines_df = lines_df[lines_df.columns[~lines_df.columns.str.endswith('_0')]]
+	lines_df = lines_df.reset_index()
+
+	lines_df_processed = lines_df.loc[:,~lines_df.columns.duplicated()]	
+
+	lines_dict = lines_df_processed.fillna('NaN').to_dict(orient='records')
+
+	return transformers_dict, lines_dict
 
 
 if __name__ == '__main__':
 
 	# setup
-	mv_grid_district = 2659
+	import yaml
+	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
+	mv_grid_district = y['mv_grid_district_id']
 	project_folder = os.path.join(os.path.expanduser('~'), 'projects', 'ding0_visualization_v1')
 	data_folder = 'data'
 
 	# # create project and data folder
-	create_project_folder(project_folder)
-	create_data_folder()
+	# create_project_folder(project_folder)
+	# create_data_folder()
 
 	# # retrieve mv grid district polygon
 	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
@@ -133,14 +153,20 @@ if __name__ == '__main__':
 	    json.dump(mv_grid_district_polygon, outfile)
 
 	# # generate ding0 data
-	ding0_data = generate_ding0_data(mv_grid_district)
-	ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
+	# ding0_data = generate_ding0_data(mv_grid_district)
+	# ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
 
 	# reformat ding0 data
-	ding0_data_reformated = reformat_ding0_grid_data(
-		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district))
+	ding0_node_data_reformated, ding0_line_data_reformated = reformat_ding0_grid_data(
+		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)),
+		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'transformers_{}.csv'.format(mv_grid_district)),
+		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'generators_{}.csv'.format(mv_grid_district)),
+		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'lines_{}.csv'.format(mv_grid_district))
 		)
 	# ding0_data_reformated.to_csv(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)))
-	ding0_data_geojson = to_geojson(ding0_data_reformated, geom_type='Point')
-	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
-	    json.dump(ding0_data_geojson, outfile)
+	ding0_node_data_geojson = to_geojson(ding0_node_data_reformated, geom_type='Point')
+	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
+	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_node_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	    json.dump(ding0_node_data_geojson, outfile)
+	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_line_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	    json.dump(ding0_line_data_geojson, outfile)

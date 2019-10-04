@@ -5,3 +5,4 @@ shapely
 pyproj
 -e git://github.com/openego/ding0.git@8011b754223e2b084a73afde3fda92e2826fddc1#egg=ding0
 egoio
+PyYAML
