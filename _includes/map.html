@@ -25,10 +25,19 @@
   </div>
 </div>
 
+<script type='text/javascript' src='js/table.js'></script>
 <script type="text/javascript" src="js/backgroundmap.js"></script>  
 
 <script>
-  mv_grid_district_id = "{{ site.mv_grid_district_id }}"
+mv_grid_district_id = "{{ site.mv_grid_district_id }}"
+color = {"hvmv": "#ff8800", "mvlv": "#008db7", "line": "#9c9c9c"}
+
+// Create Infobox
+    var Info = d3.select("#info")
+      .append("div")
+      .attr("class", "p")
+      .style("visibility", "hidden");
+
   var district = d3.select("#district")
       .append("div")
       .attr("class", "p")
@@ -78,18 +87,10 @@
       map_points.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
       // map_lines.attr("transform", "translate(" + -topLeft[0] + "," + -topLeft[1] + ")");
 
-    // Create Infobox
-    var Info = d3.select("#info")
-      .append("div")
-      .attr("class", "p")
-      .style("visibility", "hidden");
-
     // Plot nodes
     // // Filter data
     hvmv_trafos = subset.filter( function(d){return d.properties.v_nom == 110} )
     mvlv_trafos = subset.filter( function(d){return d.properties.v_nom == 400} )
-
-    color = {"hvmv": "#ff8800", "mvlv": "#008db7"}
 
     function plot_points(subset, color) {
       var points = map_points.selectAll("path")
@@ -97,23 +98,11 @@
         return d.geometry.coordinates;
       })
       .style("pointer-events", "all")
+      .style("stroke-opacity", ".5")
+      .style("stroke", color)
       .attr("fill", color)
-      // .attr("class", "map_points")
-      .on("mouseover", function (d) {
-        Info.style("visibility", "visible")
-        .html("<h5>" + d.properties.name + "</h5> <p>Nominal voltage: " + d.properties.v_nom + " kV</p>");
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .style("fill-opacity", ".7");
-      })
-      .on('mouseout', function() {                              
-          Info.style('visibility', 'hidden');
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .style("fill-opacity", "1")
-        });  
+      .on("mouseover", onmouseover_points)
+      .on('mouseout', onmouseout_points);  
 
     points.enter().append("path");
 
@@ -126,20 +115,20 @@
 
     }
     function plot_lines(lines_data) {
-                    // console.log(lines.features[0].geometry.coordinates[0], lines.features[0].geometry.coordinates[1])
-                    // console.log(path(lines.features[0].geometry.coordinates))
-      console.log(lines_data.features);
       edges = map_lines.selectAll("path")
                     .data(lines_data.features)
                     .enter()
                     .append("path")
+                    .style("pointer-events", "all")
                     .attr("d", function(d){
-                      // console.log(d.geometry.coordinates[0]); console.log(path(d)); 
                       return path(d)})
                     .attr("class", "lines")
-                    .style("fill", "#9c9c9c")
-        .style("stroke", "#9c9c9c")
-        .style("stroke-width", 5);
+                    .style("fill", color["line"])
+        .style("stroke", color["line"])
+        .style("stroke-width", 7)
+        .on("mouseover", onmouseover_lines)
+        .on("mouseout", onmouseout_lines)
+        ;
 
         return lines_data;
     }
@@ -165,4 +154,58 @@ function projectPoint(x, y) {
       var point = map.latLngToLayerPoint(new L.LatLng(y, x));
       this.stream.point(point.x, point.y);
     }
+
+function onmouseover_points(d, i) {
+        var table_data = d.properties;      
+        delete table_data["name"];
+        delete table_data["in_building"];
+        var table_str = sidebarTable(table_data);
+
+        Info.style("visibility", "visible")
+        .html("<h5>" + d.properties.name + "</h5>" + table_str);
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style("fill-opacity", ".7")
+          .style("stroke-width", 3);
+      };
+  function onmouseover_lines(d, i) {
+
+        var table_data = d.properties;
+        const index = d.properties.index;
+        delete table_data["lv_grid_id"];
+        delete table_data["coordinates_1"];
+        delete table_data["index"];
+        delete table_data["in_building"];
+        var table_str = sidebarTable(table_data);
+
+        // Info.append('table');
+
+        Info.style("visibility", "visible")
+        .html(("<h5>" + index + "</h5>" + table_str));
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style("stroke-width", "9")
+          .style("stroke-opacity", ".7")
+          .text("asd");
+      };
+
+  function onmouseout_points(d, i) {
+        Info.style('visibility', 'hidden');
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style("fill-opacity", "1")
+          .style("stroke-width", "0")
+        Info.style('visibility', 'hidden');
+      };
+  function onmouseout_lines(d, i) {
+      Info.style('visibility', 'hidden');
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .style("stroke-opacity", "1")
+        .style("stroke-width", "7");
+    };
 </script>
