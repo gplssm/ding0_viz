@@ -89,8 +89,8 @@ def create_project_folder(folderpath):
 
 def create_data_folder(folder='data'):
 
-	if os.path.exists(folder):
-	    shutil.rmtree(folder)
+	# if os.path.exists(folder):
+	#     shutil.rmtree(folder)
 	os.makedirs(folder)
 
 
@@ -109,6 +109,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	# hvmv_transformers = transformers[transformers['s_nom'] > 1000]
 	# mvlv_transformers = transformers[transformers['s_nom'] <= 1000]
 	lines = pd.read_csv(lines_file)
+	generators = pd.read_csv(generators_file)
 
 	geo_referenced_buses = buses.loc[~buses['geom'].isna(), 'geom']
 	geo_referenced_buses = pd.DataFrame(geo_referenced_buses.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_buses.index)
@@ -128,10 +129,12 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	lines_df = lines_df.reset_index()
 
 	lines_df_processed = lines_df.loc[:,~lines_df.columns.duplicated()]	
-
 	lines_dict = lines_df_processed.fillna('NaN').to_dict(orient='records')
 
-	return transformers_dict, lines_dict
+	generators_df = generators.join(buses, on='bus', how='inner').fillna('NaN')
+	generators_dict = (generators_df[generators_df['v_nom'] < 110]).to_dict(orient='records')
+
+	return transformers_dict, generators_dict, lines_dict
 
 
 if __name__ == '__main__':
@@ -156,17 +159,21 @@ if __name__ == '__main__':
 	# ding0_data = generate_ding0_data(mv_grid_district)
 	# ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
 
-	# reformat ding0 data
-	ding0_node_data_reformated, ding0_line_data_reformated = reformat_ding0_grid_data(
+	# reformat ding0 data and save
+	ding0_node_data_reformated, \
+	ding0_generator_data_reformated, \
+	ding0_line_data_reformated = reformat_ding0_grid_data(
 		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)),
 		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'transformers_{}.csv'.format(mv_grid_district)),
 		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'generators_{}.csv'.format(mv_grid_district)),
 		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'lines_{}.csv'.format(mv_grid_district))
 		)
-	# ding0_data_reformated.to_csv(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)))
 	ding0_node_data_geojson = to_geojson(ding0_node_data_reformated, geom_type='Point')
+	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
 	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
 	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_node_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(ding0_node_data_geojson, outfile)
+	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_generator_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	    json.dump(ding0_generator_data_geojson, outfile)
 	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_line_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(ding0_line_data_geojson, outfile)
