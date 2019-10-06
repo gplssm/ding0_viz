@@ -60,15 +60,18 @@ d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d)
 });
 
 
-
 d3.json("data/ding0/632/mv_visualization_line_data_632.geojson", plot_lines)   
-d3.json("data/ding0/632/mv_visualization_node_data_632.geojson", plot_nodes)
+d3.json("data/ding0/632/mv_visualization_node_data_632.geojson", plot_transformers)
+d3.json("data/ding0/632/mv_visualization_generator_data_632.geojson", function(generators_data){
+  plot_points(generators_data.features, color["generator"]);
+  plot_points(generators_data.features, color["generator"]);
+})
 
-function plot_nodes(node_data) {
+function plot_transformers(node_data) {
 
   // // Filter data
-  hvmv_trafos = node_data.features.filter( function(d){return d.properties.v_nom == 110} )
-  mvlv_trafos = node_data.features.filter( function(d){return d.properties.v_nom == 400} )
+  hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 110} )
+  mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 400} )
 
   plot_points(hvmv_trafos, color["hvmv"]);
   plot_points(mvlv_trafos, color["mvlv"]);
@@ -165,6 +168,7 @@ function onmouseover_points(d, i) {
         var table_data = d.properties;      
         delete table_data["name"];
         delete table_data["in_building"];
+        
         var table_str = sidebarTable(table_data);
 
         Info.style("visibility", "visible")
