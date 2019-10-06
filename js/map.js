@@ -53,6 +53,7 @@ d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d)
   delete props["zensus_count"];
   delete props["zensus_density"];
   delete props["gem"];
+  delete props["mv_dea_cnt"];
   var grid_description_table = sidebarTable(props);
     district
       .html("<h3>Medium-voltage grid district 632</h3>" + grid_description_table);

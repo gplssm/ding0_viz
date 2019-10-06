@@ -12,6 +12,34 @@ from egoio.tools import db
 from sqlalchemy.orm import sessionmaker
 
 
+display_names = {
+  "p_nom": "Nominal power",
+  "s_nom": "Nominal apparent power",
+  "bus": "Bus",
+  "bus0": "Bus 0",
+  "bus1": "Bus 1",
+  "mv_grid_id": "MV grid id",
+  "lv_grid_id": "LV grid id",
+  "v_nom": "Nominal voltage",
+  "lat": "Latitude",
+  "lon": "Longitude",
+  "control": "Type of control",
+  "type": "Technology",
+  "subtype": "Specific technology",
+  "weather_cell_id": "Weather cell id",
+  "length": "Length",
+  "num_parallel": "Parallel lines",
+  "subst_id": "Substation id",
+  "zensus_sum": "Population",
+  "area_ha": "Area",
+  "consumption": "Annual consumption",
+  "dea_capacity": "Generation capacity",
+  "mv_dea_capacity": "MV generation capacity",
+  "lv_dea_capacity": "LV generation capacity",
+
+}
+
+
 def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
 
 	# prepare query
@@ -27,6 +55,10 @@ def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
 		)
 	data = get_data.json()[0]
 	geom = loads(data['geom'], hex=True)
+
+	for k in data.keys():
+		if k in display_names.keys():
+			data[display_names[k]] = data.pop(k)
 
 	projection = partial(
 	                pyproj.transform,
@@ -118,7 +150,8 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	
 	buses = (buses.join(geo_referenced_buses, how='inner')).set_index('name')
 
-	transformers_df = transformers.join(buses, on='bus0', how='inner').fillna('NaN')
+	transformers_df = transformers.join(buses, on='bus0', how='inner').fillna('NaN').rename(
+		columns=display_names)
 	transformers_dict = transformers_df.to_dict(orient='records')
 
 	lines_df_0 = lines.join(buses, on='bus0', how='inner').rename(columns={'coordinates': 'coordinates_0'}).set_index('name')
@@ -129,10 +162,12 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	lines_df = lines_df.reset_index()
 
 	lines_df_processed = lines_df.loc[:,~lines_df.columns.duplicated()]	
-	lines_dict = lines_df_processed.fillna('NaN').to_dict(orient='records')
+	lines_dict = lines_df_processed.fillna('NaN').rename(
+		columns=display_names).to_dict(orient='records')
 
-	generators_df = generators.join(buses, on='bus', how='inner').fillna('NaN')
-	generators_dict = (generators_df[generators_df['v_nom'] < 110]).to_dict(orient='records')
+	generators_df = generators.join(buses, on='bus', how='inner').fillna('NaN').rename(
+		columns=display_names)
+	generators_dict = (generators_df[generators_df['Nominal voltage'] < 110]).to_dict(orient='records')
 
 	return transformers_dict, generators_dict, lines_dict
 
