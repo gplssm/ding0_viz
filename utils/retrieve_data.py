@@ -172,6 +172,20 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	return transformers_dict, generators_dict, lines_dict
 
 
+def list_available_grid_data(path):
+
+
+
+    dirs = [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name))]
+
+    with open(os.path.join(data_folder, 'available_grid_data.txt'), 'w') as f:
+	    f.write("gridids\n")
+	    for item in dirs:
+	        f.write("%s\n" % item)
+
+
+
+
 if __name__ == '__main__':
 
 	# setup
@@ -191,8 +205,8 @@ if __name__ == '__main__':
 	    json.dump(mv_grid_district_polygon, outfile)
 
 	# # generate ding0 data
-	# ding0_data = generate_ding0_data(mv_grid_district)
-	# ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
+	ding0_data = generate_ding0_data(mv_grid_district)
+	ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
 
 	# reformat ding0 data and save
 	ding0_node_data_reformated, \
@@ -212,3 +226,6 @@ if __name__ == '__main__':
 	    json.dump(ding0_generator_data_geojson, outfile)
 	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_line_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(ding0_line_data_geojson, outfile)
+
+	# Write list of available grid data
+	list_available_grid_data(os.path.join(data_folder, 'ding0'))
