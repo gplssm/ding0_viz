@@ -11,7 +11,7 @@ var g = svg.append("g").attr("class", "leaflet-zoom-hide");
 
 var map_lines = svg.append("g").attr("id", "lines");
 var map_generators = svg.append("g").attr("id", "generators");
-var map_points = svg.append("g").attr("id", "points");
+var map_points = svg.append("g").attr("id", "transformers");
 
 var transform = d3.geoTransform({point: projectPoint}),
 path = d3.geoPath().projection(transform);
@@ -60,13 +60,12 @@ d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d)
 };
 
 
-
 function plot_points_and_lines(gridid) {
 d3.json("data/ding0/" + gridid + "/mv_visualization_line_data_" + gridid + ".geojson", plot_lines)   
 d3.json("data/ding0/" + gridid + "/mv_visualization_node_data_" + gridid + ".geojson", plot_transformers)
 d3.json("data/ding0/" + gridid + "/mv_visualization_generator_data_" + gridid + ".geojson", function(generators_data){
-  plot_points(generators_data.features, color["generator"]);
-  plot_points(generators_data.features, color["generator"]);
+  plot_points(generators_data.features, color["generator"], "generators");
+  plot_points(generators_data.features, color["generator"], "generators");
 })};
 
 function plot_transformers(node_data) {
@@ -75,12 +74,12 @@ function plot_transformers(node_data) {
   hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 110} )
   mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 400} )
 
-  plot_points(hvmv_trafos, color["hvmv"]);
-  plot_points(mvlv_trafos, color["mvlv"]);
+  plot_points(hvmv_trafos, color["hvmv"], "transformers");
+  plot_points(mvlv_trafos, color["mvlv"], "transformers");
 
   // For some stupid reason I have to plot it twice :-/
-  plot_points(hvmv_trafos, color["hvmv"]);
-  plot_points(mvlv_trafos, color["mvlv"]);    
+  plot_points(hvmv_trafos, color["hvmv"], "transformers");
+  plot_points(mvlv_trafos, color["mvlv"], "transformers");    
 };
 
 function updateSVG(data) {
@@ -135,10 +134,10 @@ function plot_lines(lines_data) {
     }
 }
 
-function plot_points(subset, color) {
+function plot_points(subset, color, selection) {
 
-      updateSVG(subset);
-      var points_svg = map_generators.selectAll("path")
+      // updateSVG(subset);
+      var points_svg = svg.selectAll("g#" + selection).selectAll("path")
       .data(subset, function(d) {
         return d.geometry.coordinates;
       })
@@ -150,7 +149,7 @@ function plot_points(subset, color) {
       .on('mouseout', onmouseout_points);  
 
     points_svg.enter().append("path");
-    points_svg.attr("d", path).attr("class", "points");
+    points_svg.attr("d", path).attr("class", selection);
 
     map.on("moveend", updatePointsInternal);
 
