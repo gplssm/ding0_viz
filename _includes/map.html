@@ -17,11 +17,29 @@
     
 </style>
 
+<script>
+  function loadNewData(selectedObject) {
+    var gridid = selectedObject.value;
+
+    backgroundmap(gridid);
+    plot_points_and_lines(gridid);
+    grid_info_box(gridid);
+    d3.selectAll("path").remove();
+  };
+</script>  
 
 <div class="container-fluid d-flex h-100" style="width: 100%"">
   <div class="row my-sm-2" style="width: 100%">
     <div class="flex-grow" id="map"></div>
     <div class="col-sm-3 mx-auto">
+      <div class="row align-items-top">
+        <div class="col-sm" id="gridselect">
+          <h5>Select a grid to display</h5>
+          <select class="custom-select custom-select-sm" id="gridselector" onchange="loadNewData(this)">
+          </select>
+          <label class="text-muted">Hint: start typing the grid ID to avoid endless scrolling</label>
+        </div>
+      </div>
       <div class="row align-items-top">
         <div class="col-sm" id="district"></div>
       </div>
@@ -35,3 +53,4 @@
 <script type='text/javascript' src='js/table.js'></script>
 <script type="text/javascript" src="js/backgroundmap.js"></script>  
 <script type="text/javascript" src="js/map.js"></script>  
+<script type="text/javascript" src="js/gridselector.js"></script>  

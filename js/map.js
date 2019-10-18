@@ -5,16 +5,13 @@ var mv_grid_district_id = "{{ site.mv_grid_district_id }}"
 var color = {"hvmv": "#00b89c", "mvlv": "#008db7", "line": "#9c9c9c", "generator": "#2be555"}
 
 
-// Get the background map
-backgroundmap(mv_grid_district_id);
-
 // Add an SVG element to Leaflet’s overlay pane
 var svg = d3.select(map.getPanes().overlayPane).append("svg")
 var g = svg.append("g").attr("class", "leaflet-zoom-hide");
 
 var map_lines = svg.append("g").attr("id", "lines");
 var map_generators = svg.append("g").attr("id", "generators");
-var map_points = svg.append("g").attr("id", "points");
+var map_points = svg.append("g").attr("id", "transformers");
 
 var transform = d3.geoTransform({point: projectPoint}),
 path = d3.geoPath().projection(transform);
@@ -30,6 +27,8 @@ var district = d3.select("#district")
   .attr("class", "p")
   .style("visibility", "visible");
 
+
+function grid_info_box(mv_grid_district_id) {
 d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d) {
   props = d.features[0].properties;
   delete props["area_share"];
@@ -56,16 +55,18 @@ d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d)
   delete props["mv_dea_cnt"];
   var grid_description_table = sidebarTable(props);
     district
-      .html("<h3>Medium-voltage grid district 632</h3>" + grid_description_table);
+      .html("<h3>Medium-voltage grid district " + mv_grid_district_id + "</h3>" + grid_description_table);
 });
+};
 
 
-d3.json("data/ding0/632/mv_visualization_line_data_632.geojson", plot_lines)   
-d3.json("data/ding0/632/mv_visualization_node_data_632.geojson", plot_transformers)
-d3.json("data/ding0/632/mv_visualization_generator_data_632.geojson", function(generators_data){
-  plot_points(generators_data.features, color["generator"]);
-  plot_points(generators_data.features, color["generator"]);
-})
+function plot_points_and_lines(gridid) {
+d3.json("data/ding0/" + gridid + "/mv_visualization_line_data_" + gridid + ".geojson", plot_lines)   
+d3.json("data/ding0/" + gridid + "/mv_visualization_node_data_" + gridid + ".geojson", plot_transformers)
+d3.json("data/ding0/" + gridid + "/mv_visualization_generator_data_" + gridid + ".geojson", function(generators_data){
+  plot_points(generators_data.features, color["generator"], "generators");
+  plot_points(generators_data.features, color["generator"], "generators");
+})};
 
 function plot_transformers(node_data) {
 
@@ -73,12 +74,12 @@ function plot_transformers(node_data) {
   hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 110} )
   mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 400} )
 
-  plot_points(hvmv_trafos, color["hvmv"]);
-  plot_points(mvlv_trafos, color["mvlv"]);
+  plot_points(hvmv_trafos, color["hvmv"], "transformers");
+  plot_points(mvlv_trafos, color["mvlv"], "transformers");
 
   // For some stupid reason I have to plot it twice :-/
-  plot_points(hvmv_trafos, color["hvmv"]);
-  plot_points(mvlv_trafos, color["mvlv"]);    
+  plot_points(hvmv_trafos, color["hvmv"], "transformers");
+  plot_points(mvlv_trafos, color["mvlv"], "transformers");    
 };
 
 function updateSVG(data) {
@@ -133,9 +134,10 @@ function plot_lines(lines_data) {
     }
 }
 
-function plot_points(subset, color) {
-      updateSVG(subset);
-      var points_svg = map_generators.selectAll("path")
+function plot_points(subset, color, selection) {
+
+      // updateSVG(subset);
+      var points_svg = svg.selectAll("g#" + selection).selectAll("path")
       .data(subset, function(d) {
         return d.geometry.coordinates;
       })
@@ -147,7 +149,7 @@ function plot_points(subset, color) {
       .on('mouseout', onmouseout_points);  
 
     points_svg.enter().append("path");
-    points_svg.attr("d", path).attr("class", "points");
+    points_svg.attr("d", path).attr("class", selection);
 
     map.on("moveend", updatePointsInternal);
 
