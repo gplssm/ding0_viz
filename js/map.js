@@ -71,8 +71,8 @@ d3.json("data/ding0/" + gridid + "/mv_visualization_generator_data_" + gridid + 
 function plot_transformers(node_data) {
 
   // // Filter data
-  hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 110} )
-  mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage"] == 400} )
+  hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 110} )
+  mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 400} )
 
   plot_points(hvmv_trafos, color["hvmv"], "transformers");
   plot_points(mvlv_trafos, color["mvlv"], "transformers");
