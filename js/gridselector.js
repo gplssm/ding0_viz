@@ -15,4 +15,8 @@ d3.csv("data/available_grid_data.txt", function(csv) {
 	    fragment.appendChild(opt);
 	});
 	sel.appendChild(fragment);
+
+	// Select default grid
+	sel.selectedIndex = sel.length / 2;
+	loadNewData(sel)
 });
