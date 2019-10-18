@@ -13,31 +13,45 @@ from sqlalchemy.orm import sessionmaker
 
 
 display_names = {
-  "p_nom": "Nominal power",
-  "s_nom": "Nominal apparent power",
+  "p_nom": "Nominal power in kW",
+  "s_nom": "Nominal apparent power in kVA",
   "bus": "Bus",
   "bus0": "Bus 0",
   "bus1": "Bus 1",
   "mv_grid_id": "MV grid id",
   "lv_grid_id": "LV grid id",
-  "v_nom": "Nominal voltage",
+  "v_nom": "Nominal voltage in kV",
   "lat": "Latitude",
   "lon": "Longitude",
   "control": "Type of control",
   "type": "Technology",
   "subtype": "Specific technology",
   "weather_cell_id": "Weather cell id",
-  "length": "Length",
+  "length": "Length in km",
   "num_parallel": "Parallel lines",
   "subst_id": "Substation id",
   "zensus_sum": "Population",
-  "area_ha": "Area",
-  "consumption": "Annual consumption",
-  "dea_capacity": "Generation capacity",
-  "mv_dea_capacity": "MV generation capacity",
-  "lv_dea_capacity": "LV generation capacity",
-
+  "area_ha": "Area in km²",
+  "consumption": "Annual consumption in MWh",
+  "dea_capacity": "Generation capacity in kW",
+  "mv_dea_capacity": "MV generation capacity in kW",
+  "lv_dea_capacity": "LV generation capacity kW",
 }
+
+display_roundings = {
+	"Annual consumption in MWh": 0,
+	"Nominal apparent power in kVA": 0,
+	"Nominal power in kV": 0,
+	"Area in km²": 0,
+	"Generation capacity in kW": 0,
+	"MV generation capacity in kW": 0,
+	"LV generation capacity in kW": 0,
+	"x": 5,
+	"r": 5,
+	"Length in km": 3,
+	"Latitude": 6,
+	"Longitude": 6,
+	}
 
 
 def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
@@ -66,6 +80,10 @@ def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
 	                pyproj.Proj(init='epsg:4326'))  # destination coordinate system
 
 	data['coordinates'] = [tuple(list(transform(projection, g).exterior.coords) for g in geom.geoms)]
+
+	for k, v in data.items():
+		if k in display_roundings.keys() and v is not None:
+			data[k] = round(float(v), display_roundings[k])
 
 	feature_collection = to_geojson([data], geom_type='MultiPolygon')
 
@@ -121,9 +139,7 @@ def create_project_folder(folderpath):
 
 def create_data_folder(folder='data'):
 
-	# if os.path.exists(folder):
-	#     shutil.rmtree(folder)
-	os.makedirs(folder)
+	os.makedirs(folder, exist_ok=True)
 
 
 def geom_to_coords(geom):
@@ -150,8 +166,8 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	
 	buses = (buses.join(geo_referenced_buses, how='inner')).set_index('name')
 
-	transformers_df = transformers.join(buses, on='bus0', how='inner').fillna('NaN').rename(
-		columns=display_names)
+	transformers_df = transformers.join(buses, on='bus0', how='inner').rename(
+		columns=display_names).round(display_roundings).fillna('NaN')
 	transformers_dict = transformers_df.to_dict(orient='records')
 
 	lines_df_0 = lines.join(buses, on='bus0', how='inner').rename(columns={'coordinates': 'coordinates_0'}).set_index('name')
@@ -163,11 +179,12 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 
 	lines_df_processed = lines_df.loc[:,~lines_df.columns.duplicated()]	
 	lines_dict = lines_df_processed.fillna('NaN').rename(
-		columns=display_names).to_dict(orient='records')
+		columns=display_names).round(display_roundings).to_dict(orient='records')
+
 
 	generators_df = generators.join(buses, on='bus', how='inner').fillna('NaN').rename(
-		columns=display_names)
-	generators_dict = (generators_df[generators_df['Nominal voltage'] < 110]).to_dict(orient='records')
+		columns=display_names).round(display_roundings)
+	generators_dict = (generators_df[generators_df['Nominal voltage in kV'] < 110]).to_dict(orient='records')
 
 	return transformers_dict, generators_dict, lines_dict
 
@@ -192,12 +209,10 @@ if __name__ == '__main__':
 	import yaml
 	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
 	mv_grid_district = y['mv_grid_district_id']
-	project_folder = os.path.join(os.path.expanduser('~'), 'projects', 'ding0_visualization_v1')
 	data_folder = 'data'
 
 	# # create project and data folder
-	# create_project_folder(project_folder)
-	# create_data_folder()
+	create_data_folder()
 
 	# # retrieve mv grid district polygon
 	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
