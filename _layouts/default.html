@@ -2,7 +2,17 @@
 <html lang="en">
   {% include head.html %}
   <body>
-    {{ content }}
-    {% include post_load.html %}
+  	<div class="container-fluid d-flex h-100">
+  		<div class="row" id="wrapper">
+  			<!-- Head and map -->
+  			<div class="col-sm-9" id="headerandmap">
+  				{{ content }}
+  				<div class="row" id="map"></div>
+			</div>
+			{% include sidebar.html %}
+  		</div>
+  	</div>
+  	{% include map.html %}
+	{% include post_load.html %}
   </body>
 </html>
