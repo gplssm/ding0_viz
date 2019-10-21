@@ -1,6 +1,3 @@
----
----
-
 var mv_grid_district_id = "{{ site.mv_grid_district_id }}"
 var color = {"hvmv": "#00b89c", "mvlv": "#008db7", "line": "#9c9c9c", "generator": "#2be555"}
 
