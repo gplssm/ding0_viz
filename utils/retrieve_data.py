@@ -118,7 +118,7 @@ def to_geojson(data, geom_type):
 
 
 
-def generate_ding0_data(subst_id):
+def generate_ding0_data(grid_id, save_path):
 
 	engine = db.connection(readonly=True)
 	session = sessionmaker(bind=engine)()
@@ -126,20 +126,15 @@ def generate_ding0_data(subst_id):
 	nd = NetworkDing0(name='network')
 
 	# run DING0 on selected MV Grid District
-	nd.run_ding0(session=session,mv_grid_districts_no=[subst_id])
+	nd.run_ding0(session=session,mv_grid_districts_no=[grid_id])
 
-	return nd
-
-
-def create_project_folder(folderpath):
-
-	os.makedirs(folderpath, exist_ok=True)
-	# os.makedirs(os.path.join(folderpath, 'data'), exist_ok=True)
+	nd.to_csv(save_path)
 
 
-def create_data_folder(folder='data'):
+def create_data_folder(csv_path, geojson_path):
 
-	os.makedirs(folder, exist_ok=True)
+	os.makedirs(csv_path, exist_ok=True)
+	os.makedirs(geojson_path, exist_ok=True)
 
 
 def geom_to_coords(geom):
@@ -189,18 +184,42 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	return transformers_dict, generators_dict, lines_dict
 
 
-def list_available_grid_data(path):
+def list_available_grid_data(csv_path, geojson_path):
 
+    dirs = [name for name in os.listdir(csv_path) if os.path.isdir(os.path.join(csv_path, name))]
 
-
-    dirs = [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name))]
-
-    with open(os.path.join(data_folder, 'available_grid_data.txt'), 'w') as f:
+    with open(os.path.join(geojson_path, 'available_grid_data.txt'), 'w') as f:
 	    f.write("gridids\n")
 	    for item in dirs:
 	        f.write("%s\n" % item)
 
 
+def csv_to_geojson(grid_id, csv_path, geojson_path):
+
+	os.makedirs(os.path.join(geojson_path, str(grid_id)), exist_ok=True)
+
+	# reformat ding0 data and save
+	ding0_node_data_reformated, \
+	ding0_generator_data_reformated, \
+	ding0_line_data_reformated = reformat_ding0_grid_data(
+		os.path.join(csv_path, str(grid_id), 'buses_{}.csv'.format(grid_id)),
+		os.path.join(csv_path, str(grid_id), 'transformers_{}.csv'.format(grid_id)),
+		os.path.join(csv_path, str(grid_id), 'generators_{}.csv'.format(grid_id)),
+		os.path.join(csv_path, str(grid_id), 'lines_{}.csv'.format(grid_id))
+		)
+	ding0_node_data_geojson = to_geojson(ding0_node_data_reformated, geom_type='Point')
+	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
+	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
+
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_node_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	    json.dump(ding0_node_data_geojson, outfile)
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_generator_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	    json.dump(ding0_generator_data_geojson, outfile)
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_line_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	    json.dump(ding0_line_data_geojson, outfile)
+
+	# Write list of available grid data
+	list_available_grid_data(csv_path, geojson_path)
 
 
 if __name__ == '__main__':
@@ -209,38 +228,21 @@ if __name__ == '__main__':
 	import yaml
 	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
 	mv_grid_district = y['mv_grid_district_id']
-	data_folder = 'data'
+	csv_data_folder = os.path.join('data', 'csv')
+	geojson_data_folder = os.path.join('data', 'geojson')
 
-	# # create project and data folder
-	create_data_folder()
+	# create project and data folder
+	create_data_folder(csv_data_folder, geojson_data_folder)
 
-	# # retrieve mv grid district polygon
+	# retrieve mv grid district polygon
 	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
-	with open(os.path.join(data_folder, 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	with open(os.path.join(geojson_data_folder, 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(mv_grid_district_polygon, outfile)
 
-	# # generate ding0 data
-	ding0_data = generate_ding0_data(mv_grid_district)
-	ding0_data.to_csv(os.path.join(data_folder, 'ding0'))
+	# generate ding0 data
+	ding0_data = generate_ding0_data(mv_grid_district, csv_data_folder)
 
-	# reformat ding0 data and save
-	ding0_node_data_reformated, \
-	ding0_generator_data_reformated, \
-	ding0_line_data_reformated = reformat_ding0_grid_data(
-		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'buses_{}.csv'.format(mv_grid_district)),
-		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'transformers_{}.csv'.format(mv_grid_district)),
-		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'generators_{}.csv'.format(mv_grid_district)),
-		os.path.join(data_folder, 'ding0', str(mv_grid_district), 'lines_{}.csv'.format(mv_grid_district))
-		)
-	ding0_node_data_geojson = to_geojson(ding0_node_data_reformated, geom_type='Point')
-	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
-	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
-	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_node_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
-	    json.dump(ding0_node_data_geojson, outfile)
-	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_generator_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
-	    json.dump(ding0_generator_data_geojson, outfile)
-	with open(os.path.join(data_folder, 'ding0', str(mv_grid_district), 'mv_visualization_line_data_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
-	    json.dump(ding0_line_data_geojson, outfile)
+	# Process data and convert to CSV to geojson
+	csv_to_geojson(mv_grid_district, csv_data_folder, geojson_data_folder)
 
-	# Write list of available grid data
-	list_available_grid_data(os.path.join(data_folder, 'ding0'))
+

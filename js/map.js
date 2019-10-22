@@ -26,7 +26,7 @@ var district = d3.select("#district")
 
 
 function grid_info_box(mv_grid_district_id) {
-d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d) {
+d3.json("data/geojson/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d) {
   props = d.features[0].properties;
   delete props["area_share"];
   delete props["consumption_per_area"];
@@ -58,9 +58,9 @@ d3.json("data/mv_grid_district_" + mv_grid_district_id + ".geojson", function(d)
 
 
 function plot_points_and_lines(gridid) {
-d3.json("data/ding0/" + gridid + "/mv_visualization_line_data_" + gridid + ".geojson", plot_lines)   
-d3.json("data/ding0/" + gridid + "/mv_visualization_node_data_" + gridid + ".geojson", plot_transformers)
-d3.json("data/ding0/" + gridid + "/mv_visualization_generator_data_" + gridid + ".geojson", function(generators_data){
+d3.json("data/geojson/" + gridid + "/mv_visualization_line_data_" + gridid + ".geojson", plot_lines)   
+d3.json("data/geojson/" + gridid + "/mv_visualization_node_data_" + gridid + ".geojson", plot_transformers)
+d3.json("data/geojson/" + gridid + "/mv_visualization_generator_data_" + gridid + ".geojson", function(generators_data){
   plot_points(generators_data.features, color["generator"], "generators");
   plot_points(generators_data.features, color["generator"], "generators");
 })};

@@ -1,6 +1,6 @@
 var gridids = [];
 
-d3.csv("data/available_grid_data.txt", function(csv) {
+d3.csv("data/geojson/available_grid_data.txt", function(csv) {
 	var sel = document.getElementById('gridselector');
 	var fragment = document.createDocumentFragment();
 

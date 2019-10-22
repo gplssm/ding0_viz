@@ -9,7 +9,7 @@ function backgroundmap (mv_grid_district_id) {
   }).addTo(map);
 
   // use mv grid district bounds to reset background map
-  var polygon = "data/mv_grid_district_" + mv_grid_district_id + ".geojson"
+  var polygon = "data/geojson/mv_grid_district_" + mv_grid_district_id + ".geojson"
   d3.json(polygon, read_shape);  
 }
 
