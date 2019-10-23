@@ -19,6 +19,12 @@ pip install -r python_requirements.txt
 and you're ready to go.
 
 For generating and deploying the site with Jekyll, you need to [Ruby](https://jekyllrb.com/docs/installation/) installed.
+To install it, run 
+
+```
+sudo apt install ruby-bundler
+```
+
 To install Ruby dependencies, run
 
 ```
@@ -33,11 +39,28 @@ In addition install jekyll (might require sudo)
 gem install jekyll bundler
 ```
 
+Trouble shooting
+----------------
+
+During the installation of ruby dependencies (`bundle`) you might encounter the following error
+
+```
+An error occurred while installing eventmachine (1.2.7), and Bundler cannot
+continue.
+Make sure that `gem install eventmachine -v '1.2.7'` succeeds before bundling.
+```
+
+Install the following
+
+```
+sudo apt-get install ruby-dev
+```
+
 
 Retrieve data
 -------------
 
-Modiy config in `utils/retrieve_data.py` as you need.
+Modify config in `utils/retrieve_data.py` as you need.
 
 ```
 python utils/retrieve_data.py
