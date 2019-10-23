@@ -10,6 +10,7 @@ from functools import partial
 from ding0.core import NetworkDing0
 from egoio.tools import db
 from sqlalchemy.orm import sessionmaker
+from utils.process_data import to_geojson
 
 
 display_names = {
@@ -54,7 +55,9 @@ display_roundings = {
 	}
 
 
-def retrieve_mv_grid_polygon(subst_id, version='v0.4.5'):
+def retrieve_mv_grid_polygon(subst_id, geojson_path, version='v0.4.5'):
+
+	os.makedirs(os.path.join(geojson_path, str(subst_id)), exist_ok=True)
 
 	# prepare query
 	oep_url= 'http://oep.iks.cs.ovgu.de/'
@@ -121,10 +124,11 @@ if __name__ == '__main__':
 
 	# create project and data folder
 	create_data_folder(csv_data_folder)
+	create_data_folder(geojson_data_folder)
 
 	# retrieve mv grid district polygon
-	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district)
-	with open(os.path.join(geojson_data_folder, 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
+	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district, geojson_data_folder)
+	with open(os.path.join(geojson_data_folder, str(mv_grid_district), 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
 	    json.dump(mv_grid_district_polygon, outfile)
 
 	# generate ding0 data

@@ -157,7 +157,7 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
 	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
 
-	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_node_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_transformer_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_node_data_geojson, outfile)
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_generator_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_generator_data_geojson, outfile)
@@ -169,7 +169,11 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 
 
 if __name__ == '__main__':
-
+	import yaml
+	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
+	mv_grid_district = y['mv_grid_district_id']
+	geojson_data_folder = os.path.join('data', 'geojson')
+	csv_data_folder = os.path.join('data', 'csv')
 
 	# create project and data folder
 	create_data_folder(geojson_data_folder)
