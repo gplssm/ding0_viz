@@ -10,49 +10,9 @@ from functools import partial
 from ding0.core import NetworkDing0
 from egoio.tools import db
 from sqlalchemy.orm import sessionmaker
-from utils.process_data import to_geojson
-
-
-display_names = {
-  "p_nom": "Nominal power in kW",
-  "s_nom": "Nominal apparent power in kVA",
-  "bus": "Bus",
-  "bus0": "Bus 0",
-  "bus1": "Bus 1",
-  "mv_grid_id": "MV grid id",
-  "lv_grid_id": "LV grid id",
-  "v_nom": "Nominal voltage in kV",
-  "lat": "Latitude",
-  "lon": "Longitude",
-  "control": "Type of control",
-  "type": "Technology",
-  "subtype": "Specific technology",
-  "weather_cell_id": "Weather cell id",
-  "length": "Length in km",
-  "num_parallel": "Parallel lines",
-  "subst_id": "Substation id",
-  "zensus_sum": "Population",
-  "area_ha": "Area in km²",
-  "consumption": "Annual consumption in MWh",
-  "dea_capacity": "Generation capacity in kW",
-  "mv_dea_capacity": "MV generation capacity in kW",
-  "lv_dea_capacity": "LV generation capacity kW",
-}
-
-display_roundings = {
-	"Annual consumption in MWh": 0,
-	"Nominal apparent power in kVA": 0,
-	"Nominal power in kV": 0,
-	"Area in km²": 0,
-	"Generation capacity in kW": 0,
-	"MV generation capacity in kW": 0,
-	"LV generation capacity in kW": 0,
-	"x": 5,
-	"r": 5,
-	"Length in km": 3,
-	"Latitude": 6,
-	"Longitude": 6,
-	}
+from utils.process_data import to_geojson, display_names, display_roundings
+import yaml
+import argparse
 
 
 def retrieve_mv_grid_polygon(subst_id, geojson_path, version='v0.4.5'):
@@ -90,7 +50,8 @@ def retrieve_mv_grid_polygon(subst_id, geojson_path, version='v0.4.5'):
 
 	feature_collection = to_geojson([data], geom_type='MultiPolygon')
 
-	return feature_collection
+	with open(os.path.join(geojson_path, str(subst_id), 'mv_grid_district_{}.geojson'.format(subst_id)), 'w') as outfile:
+	    json.dump(feature_collection, outfile)
 
 
 
@@ -112,29 +73,86 @@ def create_data_folder(data_path):
 	os.makedirs(data_path, exist_ok=True)
 
 
+def to_list_of_ints(grid_id):
+
+	if grid_id:
+		assume_list = grid_id.split(",")
+		assume_range = grid_id.split("..")
+
+		if len(assume_list) > 1:
+			grid_id_list = [int(_) for _ in assume_list]
+		elif len(assume_range) > 1:
+			grid_id_list = list(range(int(assume_range[0]), int(assume_range[1]) + 1))
+		else:
+			grid_id_list = [int(grid_id)]
+
+
+		return grid_id_list
+	else:
+		return []
+
+
+def read_config_yaml(conf_file):
+
+	conf_settings = yaml.load(open(conf_file), Loader=yaml.SafeLoader)
+	if isinstance(conf_settings['grid_id'], str):
+		conf_settings['grid_id'] = [int(i) for i in conf_settings['grid_id'].split("..")]
+	elif isinstance(conf_settings['grid_id'], int):
+		conf_settings['grid_id'] = [conf_settings['grid_id']]
+
+	return conf_settings
+
+
+
 
 if __name__ == '__main__':
 
-	# setup
-	import yaml
-	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
-	mv_grid_district = y['mv_grid_district_id']
-	csv_data_folder = os.path.join('data', 'csv')
-	geojson_data_folder = os.path.join('data', 'geojson')
+	# Parse command-line input
+	parser = argparse.ArgumentParser(
+		description='Retrieve data for visualization',
+		formatter_class=argparse.RawTextHelpFormatter,
+		epilog="Alternatively, you can provide all required input by a config file.\n" \
+		"Use the argument `conf` to include a customs config file")
+	parser.add_argument('--grid_id', type=str, help='ID of the grid. Following input formats are valid\n' \
+		'\t--grid_id=645 (single grid)\n' \
+		'\t--grid_id=645,655 (list of grid IDs)\n'
+		'\t--grid_id=645..655 (range of grid IDs)\n'
+		'Must be either given by command-line or by config file.',
+		default=str())
+	parser.add_argument('--csv_data_path', type=str, help="Path to save ding0 grid data in CSV format")
+	parser.add_argument('--geojson_data_path', type=str, help="Path to save processed grid data in GeoJSON format")
+	parser.add_argument('--conf', type=read_config_yaml, help="Config file in YAML format", default=dict())
+	args = parser.parse_args()
+	args.grid_id = to_list_of_ints(args.grid_id)
+
+	# Read-in cmd-line args and custom config file args
+	settings_custom_config = {k: v for k,v in vars(args)["conf"].items() if k != "exclude"}
+	settings_cmd = vars(args)
+
+	# Load config file
+	settings_default_conf = read_config_yaml("_config.yml")
+	
+	# Merge three settings dicts with the following overwrite order
+	# 1. CMD args
+	# 2. Custom config file args
+	# 3. Default config file args
+	settings = {k: v for k, v in settings_default_conf.items() if v is not None and k != "exclude"}
+	
+	for k, v in settings_custom_config.items():
+		if v:
+			settings.update({k: v})
+
+	for k, v in settings_cmd.items():
+		if v and k != 'conf':
+			settings.update({k: v})
 
 	# create project and data folder
-	create_data_folder(csv_data_folder)
-	create_data_folder(geojson_data_folder)
+	create_data_folder(settings['csv_data_path'])
+	create_data_folder(settings['geojson_data_path'])
 
-	# retrieve mv grid district polygon
-	mv_grid_district_polygon = retrieve_mv_grid_polygon(mv_grid_district, geojson_data_folder)
-	with open(os.path.join(geojson_data_folder, str(mv_grid_district), 'mv_grid_district_{}.geojson'.format(mv_grid_district)), 'w') as outfile:
-	    json.dump(mv_grid_district_polygon, outfile)
+	for g in settings['grid_id']:
+		# retrieve mv grid district polygon
+		retrieve_mv_grid_polygon(g, settings['geojson_data_path'])
 
-	# generate ding0 data
-	ding0_data = generate_ding0_data(mv_grid_district, csv_data_folder)
-
-	# Argparse API
-	# grid_is(s) - accepted types: scalar, list, range, file
-	# --use-existing-csv='csv-folder' (requires `--data-path`)
-	# --data-path
+		# generate ding0 data
+		ding0_data = generate_ding0_data(g, settings['csv_data_path'])
