@@ -35,6 +35,9 @@ display_names = {
   "dea_capacity": "Generation capacity in kW",
   "mv_dea_capacity": "MV generation capacity in kW",
   "lv_dea_capacity": "LV generation capacity kW",
+  "peak_load": "Peak load in kW",
+  "sector": "Sector",
+  "type_info": "Type"
 }
 
 display_roundings = {
@@ -193,7 +196,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	enrich_data = {
 		"MV generation capacity in kW": 1e3 * sum(generators_mv["Nominal power in kW"]),
 		"LV generation capacity in kW": 1e3 * sum(generators_df.loc[generators_df["Nominal voltage in kV"] <= 0.4, "Nominal power in kW"]),
-		"Peak load in kW": sum(loads_df["peak_load"]),
+		"Peak load in kW": sum(loads_df["Peak load in kW"]),
 		"Annual consumption in kWh": sum(loads_df["Annual consumption in kWh"]),
 	}
 
