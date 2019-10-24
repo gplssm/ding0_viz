@@ -56,7 +56,7 @@ sudo apt-get install ruby-dev
 Use the command-line interface, for example
 
 ```
-python utils/retrieve_data.py --grid_id 632 --csv_data_path /path/to/save/data
+python utils/retrieve_data.py --grid_id 632
 ```
 
 You can also the `_config.yml` file or a custom config file. See the help with `python utils/retrieve_data.py`.
@@ -86,7 +86,7 @@ python utils/process_data.py --csv_data_path /path/to/csv/files
 
 ## Default data structure
 
-By default, csv and geojson data is organized as follows
+By default, csv and geojson data file are organized as follows
 
 ```
 ding0_viz/data
@@ -107,7 +107,7 @@ ding0_viz/data
     └── available_grid_data.txt
 ```
 
-data is a local subdirectory in the root path of the repository. The location of GeoJSON files (`data/geojson`) 
+`data/` is a local (not in the repository) subdirectory in the root path of the repository. The location of GeoJSON files (`data/geojson`) 
 
 ## Deploy and serve
 
