@@ -109,17 +109,18 @@ ding0_viz/data
 
 data is a local subdirectory in the root path of the repository. The location of GeoJSON files (`data/geojson`) 
 
-Deploy and serve
-----------------
+## Deploy and serve
 
-Run
+The site is built with [Jekyll](https://jekyllrb.com/). Use the following command (inside the repo's root directory)
 
 ```
-./DEPOY
+jekyll serve -o
 ```
 
-to build site (actually just copying), serve the site at [localhost:4000](http://localhost:4000), and immediately open it up in your browser.
+to build site (found in `_site`) and serve the it at [localhost:4000](http://localhost:4000).
+The option `-o` opens a new tab in your browser showing the site.
 
+Jekyll provides [tons of configuration options](https://jekyllrb.com/docs/usage/).
 
 
 License
