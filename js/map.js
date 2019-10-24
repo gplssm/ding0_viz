@@ -25,30 +25,8 @@ var district = d3.select("#district")
 
 function grid_info_box(grid_id) {
 d3.json("data/geojson/" + grid_id + "/mv_grid_district_" + grid_id + ".geojson", function(d) {
-  props = d.features[0].properties;
-  delete props["area_share"];
-  delete props["consumption_per_area"];
-  delete props["dea_cnt"];
-  delete props["free_area"];
-  delete props["gem_clean"];
-  delete props["group"];
-  delete props["la_area"];
-  delete props["la_count"];
-  delete props["lv_dea_cnt"];
-  delete props["population_density"];
-  delete props["subst_sum"];
-  delete props["type1"];
-  delete props["type1_cnt"];
-  delete props["type2"];
-  delete props["type2_cnt"];
-  delete props["type3"];
-  delete props["type3_cnt"];
-  delete props["version"];
-  delete props["zensus_count"];
-  delete props["zensus_density"];
-  delete props["gem"];
-  delete props["mv_dea_cnt"];
-  var grid_description_table = sidebarTable(props);
+  
+  var grid_description_table = sidebarTable(d.features[0].properties);
     district
       .html("<h3>Medium-voltage grid district " + grid_id + "</h3>" + grid_description_table);
 });
