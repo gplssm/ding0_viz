@@ -67,7 +67,7 @@ function plot_transformers(node_data) {
 
   // // Filter data
   hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 110} )
-  mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 400} )
+  mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 0.4} )
 
   plot_points(hvmv_trafos, color["hvmv"], "transformers");
   plot_points(mvlv_trafos, color["mvlv"], "transformers");

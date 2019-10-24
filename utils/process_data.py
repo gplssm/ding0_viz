@@ -148,6 +148,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	
 	buses = (buses.join(geo_referenced_buses, how='inner')).set_index('name')
 
+	transformers["s_nom"] = transformers["s_nom"] * 1e3
 	transformers_df = transformers.join(buses, on='bus0', how='inner').rename(
 		columns=display_names).round(display_roundings).fillna('NaN')
 	transformers_dict = transformers_df.to_dict(orient='records')
@@ -158,15 +159,17 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	lines_df['coordinates'] = [[tuple(row['coordinates_0']), tuple(row['coordinates_1'])] for it, row in lines_df.iterrows()]
 	lines_df = lines_df[lines_df.columns[~lines_df.columns.str.endswith('_0')]]
 	lines_df = lines_df.reset_index()
+	lines_df["s_nom"] = lines_df["s_nom"] * 1e3
 
 	lines_df_processed = lines_df.loc[:,~lines_df.columns.duplicated()]	
 	lines_dict = lines_df_processed.fillna('NaN').rename(
 		columns=display_names).round(display_roundings).to_dict(orient='records')
 
-
 	generators_df = generators.join(buses, on='bus', how='inner').fillna('NaN').rename(
 		columns=display_names).round(display_roundings)
-	generators_dict = (generators_df[generators_df['Nominal voltage in kV'] < 110]).to_dict(orient='records')
+	generators_mv = generators_df.loc[generators_df['Nominal voltage in kV'] > 0.4]
+	generators_mv = generators_mv.drop("LV grid id", axis=1)
+	generators_dict = generators_mv.to_dict(orient='records')
 
 	return transformers_dict, generators_dict, lines_dict
 
