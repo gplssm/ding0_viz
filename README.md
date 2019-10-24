@@ -66,6 +66,44 @@ Order of input processing (top overwrites bottom)
 1. Command-line arguments
 2. Custom conifg file
 3. Default config file `_config.yml`
+
+## Process data
+
+Use the CLI
+
+```
+python utils/process_data.py
+```
+
+and see help by `python utils/process_data.py -h`.
+By default, it processes all CSV files available in the default CSV file location.
+
+
+## Default data structure
+
+By default, csv and geojson data is organized as follows
+
+```
+ding0_viz/data
+├── csv
+│   └── 629
+│       ├── buses_629.csv
+│       ├── generators_629.csv
+│       ├── lines_629.csv
+│       ├── loads_629.csv
+│       ├── network_629.csv
+│       └── transformers_629.csv
+└── geojson
+    ├── 629
+    │   ├── mv_grid_district_629.geojson
+    │   ├── mv_visualization_generator_data_629.geojson
+    │   ├── mv_visualization_line_data_629.geojson
+    │   └── mv_visualization_transformer_data_629.geojson
+    └── available_grid_data.txt
+```
+
+data is a local subdirectory in the root path of the repository. The location of GeoJSON files (`data/geojson`) 
+
 Deploy and serve
 ----------------
 

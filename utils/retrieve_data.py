@@ -10,7 +10,7 @@ from functools import partial
 from ding0.core import NetworkDing0
 from egoio.tools import db
 from sqlalchemy.orm import sessionmaker
-from utils.process_data import to_geojson, display_names, display_roundings
+from utils.process_data import to_geojson, display_names, display_roundings, read_config_yaml, to_list_of_ints
 import yaml
 import argparse
 
@@ -71,37 +71,6 @@ def generate_ding0_data(grid_id, save_path):
 def create_data_folder(data_path):
 
 	os.makedirs(data_path, exist_ok=True)
-
-
-def to_list_of_ints(grid_id):
-
-	if grid_id:
-		assume_list = grid_id.split(",")
-		assume_range = grid_id.split("..")
-
-		if len(assume_list) > 1:
-			grid_id_list = [int(_) for _ in assume_list]
-		elif len(assume_range) > 1:
-			grid_id_list = list(range(int(assume_range[0]), int(assume_range[1]) + 1))
-		else:
-			grid_id_list = [int(grid_id)]
-
-
-		return grid_id_list
-	else:
-		return []
-
-
-def read_config_yaml(conf_file):
-
-	conf_settings = yaml.load(open(conf_file), Loader=yaml.SafeLoader)
-	if isinstance(conf_settings['grid_id'], str):
-		conf_settings['grid_id'] = [int(i) for i in conf_settings['grid_id'].split("..")]
-	elif isinstance(conf_settings['grid_id'], int):
-		conf_settings['grid_id'] = [conf_settings['grid_id']]
-
-	return conf_settings
-
 
 
 

@@ -6,6 +6,8 @@ from shapely.wkb import loads
 from shapely.ops import transform
 import pyproj
 from functools import partial
+import argparse
+import yaml
 
 
 display_names = {
@@ -168,16 +170,85 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 	list_available_grid_data(csv_path, geojson_path)
 
 
+def to_list_of_ints(grid_id):
+
+	if grid_id:
+		assume_list = grid_id.split(",")
+		assume_range = grid_id.split("..")
+
+		if len(assume_list) > 1:
+			grid_id_list = [int(_) for _ in assume_list]
+		elif len(assume_range) > 1:
+			grid_id_list = list(range(int(assume_range[0]), int(assume_range[1]) + 1))
+		else:
+			grid_id_list = [int(grid_id)]
+
+
+		return grid_id_list
+	else:
+		return []
+
+
+def read_config_yaml(conf_file):
+
+	conf_settings = yaml.load(open(conf_file), Loader=yaml.SafeLoader)
+	if isinstance(conf_settings.get('grid_id', None), str):
+		conf_settings['grid_id'] = [int(i) for i in conf_settings['grid_id'].split("..")]
+	elif isinstance(conf_settings.get('grid_id', None), int):
+		conf_settings['grid_id'] = [conf_settings['grid_id']]
+
+	return conf_settings
+
+
 if __name__ == '__main__':
-	import yaml
-	y = yaml.load(open("_config.yml"), Loader=yaml.SafeLoader)
-	mv_grid_district = y['mv_grid_district_id']
-	geojson_data_folder = os.path.join('data', 'geojson')
-	csv_data_folder = os.path.join('data', 'csv')
+
+	# Parse command-line input
+	parser = argparse.ArgumentParser(
+		description='Process data for visualization\n\n' \
+			'- CSV files are converted to GeoJSON\n' \
+			'- A list of grid ids is generated',
+		formatter_class=argparse.RawTextHelpFormatter,
+		epilog="Alternatively, you can provide all required input by a config file.\n" \
+		"Use the argument `conf` to include a customs config file")
+	parser.add_argument('--grid_id', type=str, help='IDs of the grid that should processed. Following input formats are valid\n' \
+		'\t--grid_id=645 (single grid)\n' \
+		'\t--grid_id=645,655 (list of grid IDs)\n'
+		'\t--grid_id=645..655 (range of grid IDs)\n'
+		'Must be either given by command-line or by config file.',
+		default=str())
+	parser.add_argument('--csv_data_path', type=str, help="Path to read ding0 grid data (in CSV format) from")
+	parser.add_argument('--geojson_data_path', type=str, help="Path to save processed grid data in GeoJSON format")
+	parser.add_argument('--conf', type=read_config_yaml, help="Config file in YAML format", default=dict())
+	args = parser.parse_args()
+	args.grid_id = to_list_of_ints(args.grid_id)
+
+	# Read-in cmd-line args and custom config file args
+	settings_custom_config = {k: v for k,v in vars(args)["conf"].items() if k != "exclude"}
+	settings_cmd = vars(args)
+
+	# Load config file
+	settings_default_conf = read_config_yaml("_config.yml")
+	
+	# Merge three settings dicts with the following overwrite order
+	# 1. CMD args
+	# 2. Custom config file args
+	# 3. Default config file args
+	settings = {k: v for k, v in settings_default_conf.items() if v is not None and k != "exclude"}
+	
+	for k, v in settings_custom_config.items():
+		if v:
+			settings.update({k: v})
+
+	for k, v in settings_cmd.items():
+		if v and k != 'conf':
+			settings.update({k: v})
 
 	# create project and data folder
-	create_data_folder(geojson_data_folder)
-
+	create_data_folder(settings['geojson_data_path'])
 
 	# Process data and convert to CSV to geojson
-	csv_to_geojson(mv_grid_district, csv_data_folder, geojson_data_folder)
+	if not settings.get('grid_id', None):
+		settings['grid_id'] = [name for name in os.listdir(settings['csv_data_path']) 
+			if os.path.isdir(os.path.join(settings['csv_data_path'], name))]
+	for g in settings['grid_id']:
+		csv_to_geojson(g, settings['csv_data_path'], settings['geojson_data_path'])
