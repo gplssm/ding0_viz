@@ -3,6 +3,6 @@ pandas
 geojson
 shapely
 pyproj
--e git://github.com/openego/ding0.git@8011b754223e2b084a73afde3fda92e2826fddc1#egg=ding0
+-e git://github.com/openego/ding0.git@74a7314f2224201d2eb9c7add009a4fcc2044768#egg=ding0
 egoio
 PyYAML
