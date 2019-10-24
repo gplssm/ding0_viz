@@ -3,7 +3,8 @@ import requests
 import pandas as pd
 import json
 from geojson import Feature, MultiPolygon, FeatureCollection, Point, LineString
-from shapely.wkb import loads
+from shapely.wkb import loads as wkb_loads
+from shapely.wkt import loads as wkt_loads
 from shapely.ops import transform
 import pyproj
 from functools import partial
@@ -29,19 +30,22 @@ display_names = {
   "length": "Length in km",
   "num_parallel": "Parallel lines",
   "subst_id": "Substation id",
-  "zensus_sum": "Population",
-  "area_ha": "Area in km²",
-  "consumption": "Annual consumption in MWh",
+  "mv_grid_district_population": "Population",
+  "annual_consumption": "Annual consumption in kWh",
   "dea_capacity": "Generation capacity in kW",
   "mv_dea_capacity": "MV generation capacity in kW",
   "lv_dea_capacity": "LV generation capacity kW",
+  "peak_load": "Peak load in kW",
+  "sector": "Sector",
+  "type_info": "Type"
 }
 
 display_roundings = {
-	"Annual consumption in MWh": 0,
+	"Annual consumption in kWh": 0,
+	"Peak load in kW": 2,
 	"Nominal apparent power in kVA": 0,
 	"Nominal power in kV": 0,
-	"Area in km²": 0,
+	"Area in km²": 2,
 	"Generation capacity in kW": 0,
 	"MV generation capacity in kW": 0,
 	"LV generation capacity in kW": 0,
@@ -69,27 +73,39 @@ def retrieve_mv_grid_polygon(subst_id, geojson_path, version='v0.4.5'):
 		oep_url+'/api/v0/schema/'+schema+'/tables/'+table+'/rows/?{version}{where_ids}'.format(version=where_version, where_ids=where_ids)
 		)
 	data = get_data.json()[0]
-	geom = loads(data['geom'], hex=True)
 
-	for k in data.keys():
+	return {"Area in km²": float(data["area_ha"]) / 100}
+
+
+def retrieve_mv_grid_info(grid_id, csv_path, geojson_path, enrich_data):
+
+	network = pd.read_csv(os.path.join(csv_path, str(grid_id), 'network_{}.csv'.format(grid_id)))
+	geom = wkt_loads(network.loc[0, "mv_grid_district_geom"])
+	network = network.drop(["name", "srid", "mv_grid_district_geom"], axis=1).to_dict(orient='records')[0]
+
+	coords = list(geom.geoms[0].exterior.coords)
+	coords_list = []
+	for coord in coords:
+		coords_list.append(list(coord))
+
+	network['coordinates'] = [[coords_list]]
+	network.update(**enrich_data)
+
+	for k in network.keys():
 		if k in display_names.keys():
-			data[display_names[k]] = data.pop(k)
+			network[display_names[k]] = network.pop(k)
 
-	projection = partial(
-	                pyproj.transform,
-	                pyproj.Proj(init='epsg:3035'),  # source coordinate system
-	                pyproj.Proj(init='epsg:4326'))  # destination coordinate system
-
-	data['coordinates'] = [tuple(list(transform(projection, g).exterior.coords) for g in geom.geoms)]
-
-	for k, v in data.items():
+	for k, v in network.items():
 		if k in display_roundings.keys() and v is not None:
-			data[k] = round(float(v), display_roundings[k])
+			network[k] = round(float(v), display_roundings[k])
 
-	feature_collection = to_geojson([data], geom_type='MultiPolygon')
+	feature_collection = to_geojson([network], geom_type='MultiPolygon')
 
-	with open(os.path.join(geojson_path, str(subst_id), 'mv_grid_district_{}.geojson'.format(subst_id)), 'w') as outfile:
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_grid_district_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(feature_collection, outfile)
+
+
+
 
 
 def to_geojson(data, geom_type):
@@ -106,7 +122,6 @@ def to_geojson(data, geom_type):
 			coordinates = LineString(dat['coordinates'])
 		else:
 			raise NotImplementedError()
-
 
 		properties = {key: value for key, value in dat.items() 
 			if key not in ['geom', 'coordinates', 'geom_type']}
@@ -126,13 +141,13 @@ def create_data_folder(data_path):
 
 def geom_to_coords(geom):
 
-	coordinates_shp = loads(geom, hex=True)
+	coordinates_shp = wkb_loads(geom, hex=True)
 	coordinates = [coordinates_shp.x, coordinates_shp.y]
 
 	return coordinates
 
 
-def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_file):
+def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_file, loads_file):
 
 	buses = pd.read_csv(bus_file)
 	transformers = pd.read_csv(transformer_file)
@@ -140,6 +155,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	# mvlv_transformers = transformers[transformers['s_nom'] <= 1000]
 	lines = pd.read_csv(lines_file)
 	generators = pd.read_csv(generators_file)
+	loads = pd.read_csv(loads_file)
 
 	geo_referenced_buses = buses.loc[~buses['geom'].isna(), 'geom']
 	geo_referenced_buses = pd.DataFrame(geo_referenced_buses.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_buses.index)
@@ -171,7 +187,20 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	generators_mv = generators_mv.drop("LV grid id", axis=1)
 	generators_dict = generators_mv.to_dict(orient='records')
 
-	return transformers_dict, generators_dict, lines_dict
+	loads_df = loads.join(buses, on='bus', how='inner').fillna('NaN').rename(
+		columns=display_names).round(display_roundings)
+	loads_mv = loads_df.loc[loads_df['Nominal voltage in kV'] > 0.4]
+	loads_mv = loads_mv.drop("LV grid id", axis=1)
+	loads_dict = loads_mv.to_dict(orient='records')
+
+	enrich_data = {
+		"MV generation capacity in kW": 1e3 * sum(generators_mv["Nominal power in kW"]),
+		"LV generation capacity in kW": 1e3 * sum(generators_df.loc[generators_df["Nominal voltage in kV"] <= 0.4, "Nominal power in kW"]),
+		"Peak load in kW": sum(loads_df["Peak load in kW"]),
+		"Annual consumption in kWh": sum(loads_df["Annual consumption in kWh"]),
+	}
+
+	return transformers_dict, generators_dict, lines_dict, loads_dict, enrich_data
 
 
 def list_available_grid_data(csv_path, geojson_path):
@@ -188,28 +217,37 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 
 	os.makedirs(os.path.join(geojson_path, str(grid_id)), exist_ok=True)
 
-	# reformat ding0 data and save
+	# reformat ding0 data
 	ding0_node_data_reformated, \
 	ding0_generator_data_reformated, \
-	ding0_line_data_reformated = reformat_ding0_grid_data(
+	ding0_line_data_reformated, \
+	ding0_load_data_reformated, \
+	enrich_data = reformat_ding0_grid_data(
 		os.path.join(csv_path, str(grid_id), 'buses_{}.csv'.format(grid_id)),
 		os.path.join(csv_path, str(grid_id), 'transformers_{}.csv'.format(grid_id)),
 		os.path.join(csv_path, str(grid_id), 'generators_{}.csv'.format(grid_id)),
-		os.path.join(csv_path, str(grid_id), 'lines_{}.csv'.format(grid_id))
+		os.path.join(csv_path, str(grid_id), 'lines_{}.csv'.format(grid_id)),
+		os.path.join(csv_path, str(grid_id), 'loads_{}.csv'.format(grid_id))
 		)
+
+	# Convert to GeoJSON and save to file
 	ding0_node_data_geojson = to_geojson(ding0_node_data_reformated, geom_type='Point')
 	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
 	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
-
+	ding0_load_data_geojson = to_geojson(ding0_load_data_reformated, geom_type='Point')
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_transformer_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_node_data_geojson, outfile)
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_generator_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_generator_data_geojson, outfile)
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_line_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_line_data_geojson, outfile)
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_load_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	    json.dump(ding0_load_data_geojson, outfile)
 
 	# Write list of available grid data
 	list_available_grid_data(csv_path, geojson_path)
+
+	return enrich_data
 
 
 def to_list_of_ints(grid_id):
@@ -293,8 +331,8 @@ if __name__ == '__main__':
 		settings['grid_id'] = [name for name in os.listdir(settings['csv_data_path']) 
 			if os.path.isdir(os.path.join(settings['csv_data_path'], name))]
 	for g in settings['grid_id']:
-		# retrieve mv grid district polygon
-		retrieve_mv_grid_polygon(g, settings['geojson_data_path'])
-
 		# Convert CSV to GeoJSON
-		csv_to_geojson(g, settings['csv_data_path'], settings['geojson_data_path'])
+		enrich_data_map_data = csv_to_geojson(g, settings['csv_data_path'], settings['geojson_data_path'])
+		# retrieve mv grid district polygon
+		enrich_data_area = retrieve_mv_grid_polygon(g, settings['geojson_data_path'])
+		retrieve_mv_grid_info(g, settings['csv_data_path'], settings['geojson_data_path'], {**enrich_data_area, **enrich_data_map_data})
