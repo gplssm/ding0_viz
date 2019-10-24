@@ -17,7 +17,9 @@ display_names = {
   "s_nom": "Nominal apparent power in kVA",
   "bus": "Bus",
   "bus0": "Bus 0",
+  "bus_open": "Bus 0",
   "bus1": "Bus 1",
+  "bus_closed": "Bus 1",
   "mv_grid_id": "MV grid id",
   "lv_grid_id": "LV grid id",
   "v_nom": "Nominal voltage in kV",
@@ -147,7 +149,7 @@ def geom_to_coords(geom):
 	return coordinates
 
 
-def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_file, loads_file):
+def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_file, loads_file, switches_file):
 
 	buses = pd.read_csv(bus_file)
 	transformers = pd.read_csv(transformer_file)
@@ -156,6 +158,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	lines = pd.read_csv(lines_file)
 	generators = pd.read_csv(generators_file)
 	loads = pd.read_csv(loads_file)
+	switches = pd.read_csv(switches_file)
 
 	geo_referenced_buses = buses.loc[~buses['geom'].isna(), 'geom']
 	geo_referenced_buses = pd.DataFrame(geo_referenced_buses.apply(geom_to_coords).rename('coordinates'), index=geo_referenced_buses.index)
@@ -193,6 +196,17 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 	loads_mv = loads_mv.drop("LV grid id", axis=1)
 	loads_dict = loads_mv.to_dict(orient='records')
 
+	switches_df_0 = switches.join(buses, on='bus_open', how='inner').rename(columns={'coordinates': 'coordinates_0'}).set_index('name')
+	switches_df_1 = switches.join(buses, on='bus_closed', how='inner').rename(columns={'coordinates': 'coordinates_1'}).set_index('name')
+	switches_df = pd.concat([switches_df_0, switches_df_1], axis=1, sort=True).dropna(subset=['coordinates_0', 'coordinates_1'])
+	switches_df = switches_df.loc[:,~switches_df.columns.duplicated()]	
+	switches_df['coordinates'] = [
+		[(row['coordinates_0'][0] + row['coordinates_1'][0]) / 2, 
+		(row['coordinates_0'][1] + row['coordinates_1'][1]) / 2]
+		for it, row in switches_df.iterrows()]
+	switches_dict = switches_df[["coordinates", "bus_open", "bus_closed"]].reset_index().fillna('NaN').rename(
+		columns=display_names).round(display_roundings).to_dict(orient='records')
+
 	enrich_data = {
 		"MV generation capacity in kW": 1e3 * sum(generators_mv["Nominal power in kW"]),
 		"LV generation capacity in kW": 1e3 * sum(generators_df.loc[generators_df["Nominal voltage in kV"] <= 0.4, "Nominal power in kW"]),
@@ -200,7 +214,7 @@ def reformat_ding0_grid_data(bus_file, transformer_file, generators_file, lines_
 		"Annual consumption in kWh": sum(loads_df["Annual consumption in kWh"]),
 	}
 
-	return transformers_dict, generators_dict, lines_dict, loads_dict, enrich_data
+	return transformers_dict, generators_dict, lines_dict, loads_dict, switches_dict, enrich_data
 
 
 def list_available_grid_data(csv_path, geojson_path):
@@ -222,12 +236,14 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 	ding0_generator_data_reformated, \
 	ding0_line_data_reformated, \
 	ding0_load_data_reformated, \
+	ding0_switch_data_reformated, \
 	enrich_data = reformat_ding0_grid_data(
 		os.path.join(csv_path, str(grid_id), 'buses_{}.csv'.format(grid_id)),
 		os.path.join(csv_path, str(grid_id), 'transformers_{}.csv'.format(grid_id)),
 		os.path.join(csv_path, str(grid_id), 'generators_{}.csv'.format(grid_id)),
 		os.path.join(csv_path, str(grid_id), 'lines_{}.csv'.format(grid_id)),
-		os.path.join(csv_path, str(grid_id), 'loads_{}.csv'.format(grid_id))
+		os.path.join(csv_path, str(grid_id), 'loads_{}.csv'.format(grid_id)),
+		os.path.join(csv_path, str(grid_id), 'switches_{}.csv'.format(grid_id))
 		)
 
 	# Convert to GeoJSON and save to file
@@ -235,6 +251,7 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 	ding0_generator_data_geojson = to_geojson(ding0_generator_data_reformated, geom_type='Point')
 	ding0_line_data_geojson = to_geojson(ding0_line_data_reformated, geom_type='LineString')
 	ding0_load_data_geojson = to_geojson(ding0_load_data_reformated, geom_type='Point')
+	ding0_switch_data_geojson = to_geojson(ding0_switch_data_reformated, geom_type='Point')
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_transformer_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_node_data_geojson, outfile)
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_generator_data_{}.geojson'.format(grid_id)), 'w') as outfile:
@@ -243,7 +260,8 @@ def csv_to_geojson(grid_id, csv_path, geojson_path):
 	    json.dump(ding0_line_data_geojson, outfile)
 	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_load_data_{}.geojson'.format(grid_id)), 'w') as outfile:
 	    json.dump(ding0_load_data_geojson, outfile)
-
+	with open(os.path.join(geojson_path, str(grid_id), 'mv_visualization_switch_data_{}.geojson'.format(grid_id)), 'w') as outfile:
+	    json.dump(ding0_switch_data_geojson, outfile)
 	# Write list of available grid data
 	list_available_grid_data(csv_path, geojson_path)
 

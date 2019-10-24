@@ -1,4 +1,4 @@
-var color = {"hvmv": "#00b89c", "mvlv": "#008db7", "line": "#9c9c9c", "generator": "#2be555", "load": "#e52b55"}
+var color = {"hvmv": "#00b89c", "mvlv": "#008db7", "line": "#9c9c9c", "generator": "#2be555", "load": "#e52b55", "switch": "#020202"}
 var props_selection = [
   "Annual consumption in kWh", 
   "Nominal power in kW",
@@ -24,9 +24,10 @@ var svg = d3.select(map.getPanes().overlayPane).append("svg")
 var g = svg.append("g").attr("class", "leaflet-zoom-hide");
 
 var map_lines = svg.append("g").attr("id", "lines");
-var map_points = svg.append("g").attr("id", "loads");
+var map_loads = svg.append("g").attr("id", "loads");
 var map_generators = svg.append("g").attr("id", "generators");
 var map_points = svg.append("g").attr("id", "transformers");
+var map_switches = svg.append("g").attr("id", "switches");
 
 var transform = d3.geoTransform({point: projectPoint}),
 path = d3.geoPath().projection(transform);
@@ -57,11 +58,15 @@ function plot_points_and_lines(gridid) {
 d3.json("data/geojson/" + gridid + "/mv_visualization_line_data_" + gridid + ".geojson", plot_lines)   
 d3.json("data/geojson/" + gridid + "/mv_visualization_transformer_data_" + gridid + ".geojson", plot_transformers)
 d3.json("data/geojson/" + gridid + "/mv_visualization_generator_data_" + gridid + ".geojson", function(generators_data){
-  plot_points(generators_data.features, color["generator"], "generators");
-  plot_points(generators_data.features, color["generator"], "generators");})
+  plot_points(generators_data.features, color["generator"], "generators", 8);
+  plot_points(generators_data.features, color["generator"], "generators", 8);})
 d3.json("data/geojson/" + gridid + "/mv_visualization_load_data_" + gridid + ".geojson", function(loads_data){
-  plot_points(loads_data.features, color["load"], "loads");
-  plot_points(loads_data.features, color["load"], "loads");})
+  plot_points(loads_data.features, color["load"], "loads", 8);
+  plot_points(loads_data.features, color["load"], "loads", 8);})
+d3.json("data/geojson/" + gridid + "/mv_visualization_switch_data_" + gridid + ".geojson", function(switches_data){
+  plot_points(switches_data.features, color["switch"], "switches", 4.5);
+  plot_points(switches_data.features, color["switch"], "switches", 4.5);
+})
 };
 
 function plot_transformers(node_data) {
@@ -70,16 +75,15 @@ function plot_transformers(node_data) {
   hvmv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 110} )
   mvlv_trafos = node_data.features.filter( function(d){return d.properties["Nominal voltage in kV"] == 0.4} )
 
-  plot_points(hvmv_trafos, color["hvmv"], "transformers");
-  plot_points(mvlv_trafos, color["mvlv"], "transformers");
+  plot_points(hvmv_trafos, color["hvmv"], "transformers", 10);
+  plot_points(mvlv_trafos, color["mvlv"], "transformers", 8);
 
   // For some stupid reason I have to plot it twice :-/
-  plot_points(hvmv_trafos, color["hvmv"], "transformers");
-  plot_points(mvlv_trafos, color["mvlv"], "transformers");    
+  plot_points(hvmv_trafos, color["hvmv"], "transformers", 10);
+  plot_points(mvlv_trafos, color["mvlv"], "transformers", 8);    
 };
 
 function updateSVG(data) {
-      path.pointRadius(10);
 
       var bounds = path.bounds({
         type: "FeatureCollection",
@@ -130,8 +134,8 @@ function plot_lines(lines_data) {
     }
 }
 
-function plot_points(subset, color, selection) {
-
+function plot_points(subset, color, selection, r) {
+      path.pointRadius(r)
       // updateSVG(subset);
       var points_svg = svg.selectAll("g#" + selection).selectAll("path")
       .data(subset, function(d) {
@@ -150,7 +154,7 @@ function plot_points(subset, color, selection) {
     map.on("moveend", updatePointsInternal);
 
     function updatePointsInternal(e) {
-
+      path.pointRadius(r)
       points_svg.attr("d", path);
     }
   }
