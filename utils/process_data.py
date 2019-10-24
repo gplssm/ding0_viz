@@ -1,4 +1,5 @@
 import os
+import requests
 import pandas as pd
 import json
 from geojson import Feature, MultiPolygon, FeatureCollection, Point, LineString
@@ -51,6 +52,44 @@ display_roundings = {
 	"Longitude": 6,
 	}
 
+
+def retrieve_mv_grid_polygon(subst_id, geojson_path, version='v0.4.5'):
+
+	os.makedirs(os.path.join(geojson_path, str(subst_id)), exist_ok=True)
+
+	# prepare query
+	oep_url= 'http://oep.iks.cs.ovgu.de/'
+	schema = "grid"
+	table = "ego_dp_mv_griddistrict"
+	where_version = 'where=version=' + version
+	where_ids = '&where=subst_id=' + str(subst_id)
+	
+	# retrieve data and reformat geo data
+	get_data = requests.get(
+		oep_url+'/api/v0/schema/'+schema+'/tables/'+table+'/rows/?{version}{where_ids}'.format(version=where_version, where_ids=where_ids)
+		)
+	data = get_data.json()[0]
+	geom = loads(data['geom'], hex=True)
+
+	for k in data.keys():
+		if k in display_names.keys():
+			data[display_names[k]] = data.pop(k)
+
+	projection = partial(
+	                pyproj.transform,
+	                pyproj.Proj(init='epsg:3035'),  # source coordinate system
+	                pyproj.Proj(init='epsg:4326'))  # destination coordinate system
+
+	data['coordinates'] = [tuple(list(transform(projection, g).exterior.coords) for g in geom.geoms)]
+
+	for k, v in data.items():
+		if k in display_roundings.keys() and v is not None:
+			data[k] = round(float(v), display_roundings[k])
+
+	feature_collection = to_geojson([data], geom_type='MultiPolygon')
+
+	with open(os.path.join(geojson_path, str(subst_id), 'mv_grid_district_{}.geojson'.format(subst_id)), 'w') as outfile:
+	    json.dump(feature_collection, outfile)
 
 
 def to_geojson(data, geom_type):
@@ -251,4 +290,8 @@ if __name__ == '__main__':
 		settings['grid_id'] = [name for name in os.listdir(settings['csv_data_path']) 
 			if os.path.isdir(os.path.join(settings['csv_data_path'], name))]
 	for g in settings['grid_id']:
+		# retrieve mv grid district polygon
+		retrieve_mv_grid_polygon(g, settings['geojson_data_path'])
+
+		# Convert CSV to GeoJSON
 		csv_to_geojson(g, settings['csv_data_path'], settings['geojson_data_path'])

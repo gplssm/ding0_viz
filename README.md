@@ -78,6 +78,11 @@ python utils/process_data.py
 and see help by `python utils/process_data.py -h`.
 By default, it processes all CSV files available in the default CSV file location.
 
+If you have a bunch of ding0 data in CSV files already saved to different path, use
+
+```
+python utils/process_data.py --csv_data_path /path/to/csv/files
+```
 
 ## Default data structure
 
