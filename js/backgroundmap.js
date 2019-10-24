@@ -25,6 +25,5 @@ function setMapBounds (map, shape) {
 L.control.scale().addTo(map);
 
 function read_shape(shape) {
-  // console.log(shape);
   setMapBounds(map, shape);
 }
