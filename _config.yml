@@ -1,2 +1,3 @@
-exclude: [utils, python_requirements.txt, README, DEPLOY]
-mv_grid_district_id: 629
+exclude: [utils, src, data/csv, python_requirements.txt, README, LICENSE, DEPLOY]
+csv_data_path: data/csv
+geojson_data_path: data/geojson
