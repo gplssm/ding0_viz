@@ -162,14 +162,15 @@ function projectPoint(x, y) {
   };
 
 function onmouseover_points(d, i) {
-        var table_data = d.properties;      
+        var table_data = d.properties;
+        var name = JSON.parse(JSON.stringify(table_data["name"]));
         delete table_data["name"];
         delete table_data["in_building"];
         
         var table_str = sidebarTable(table_data);
 
         Info.style("visibility", "visible")
-        .html("<h5>" + d.properties.name + "</h5>" + table_str);
+        .html("<h5>" + name + "</h5>" + table_str);
         d3.select(this)
           .transition()
           .duration(200)
@@ -180,7 +181,7 @@ function onmouseover_points(d, i) {
 function onmouseover_lines(d, i) {
 
       var table_data = d.properties;
-      const index = d.properties.index;
+      var index = JSON.parse(JSON.stringify(table_data["index"]));
       delete table_data["lv_grid_id"];
       delete table_data["coordinates_1"];
       delete table_data["index"];
