@@ -1,2 +1,2 @@
-exclude: [utils, python_requirements.txt, README, DEPLOY]
+exclude: [utils, src, data/csv, python_requirements.txt, README, LICENSE, DEPLOY]
 mv_grid_district_id: 629
